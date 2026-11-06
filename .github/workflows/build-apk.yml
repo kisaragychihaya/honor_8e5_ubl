@@ -39,10 +39,16 @@ jobs:
         run: |
           SDKMGR="${{ steps.sdk.outputs.path }}"
           yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+          echo "=== Available platforms (stable channel) ==="
+          "$SDKMGR" --list 2>/dev/null | grep -oE 'platforms;android-[0-9]+' | sort -uV | tail -8
           NDK_VER=$("$SDKMGR" --list 2>/dev/null | grep -oE 'ndk;29\.0\.[0-9]+' | head -n1 | cut -d';' -f2)
-          if [ -z "$NDK_VER" ]; then NDK_VER="29.0.14206855"; fi
+          if [ -z "$NDK_VER" ]; then NDK_VER="29.0.14206865"; fi
           echo "Installing NDK $NDK_VER"
-          "$SDKMGR" --install "platforms;android-37" "build-tools;37.0.0" "ndk;${NDK_VER}" "platform-tools"
+          if ! "$SDKMGR" --install "platforms;android-37" "build-tools;37.0.0" "ndk;${NDK_VER}" "platform-tools"; then
+            echo "Stable channel failed, retrying with --channel=3"
+            yes | "$SDKMGR" --channel=3 --licenses >/dev/null 2>&1 || true
+            "$SDKMGR" --channel=3 --install "platforms;android-37" "build-tools;37.0.0" "ndk;${NDK_VER}" "platform-tools"
+          fi
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
