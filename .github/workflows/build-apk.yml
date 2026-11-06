@@ -18,11 +18,6 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          accept-android-sdk-preview-license: true
-
       - name: Install SDK Platform 37 / Build Tools / NDK r29
         shell: bash
         run: |
