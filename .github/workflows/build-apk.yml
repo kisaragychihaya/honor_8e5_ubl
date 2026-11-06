@@ -34,7 +34,8 @@ jobs:
           NDK_VER=$("$SDKMGR" --list 2>/dev/null | grep -oE 'ndk;29\.0\.[0-9]+' | head -n1 | cut -d';' -f2)
           if [ -z "$NDK_VER" ]; then NDK_VER="29.0.14206865"; fi
           echo "Installing ndk;$NDK_VER"
-          yes | "$SDKMGR" --channel=0 --install "ndk;${NDK_VER}"
+          echo "y" | "$SDKMGR" --channel=0 --install "ndk;${NDK_VER}"
+          test -d "$ANDROID_HOME/ndk/${NDK_VER}/toolchains/llvm/prebuilt" && echo "NDK installed OK"
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
