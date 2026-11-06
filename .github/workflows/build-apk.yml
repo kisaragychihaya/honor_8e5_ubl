@@ -18,37 +18,23 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Locate sdkmanager
-        id: sdk
-        shell: bash
-        run: |
-          SDKMGR=$(command -v sdkmanager || true)
-          if [ -z "$SDKMGR" ]; then
-            SDKMGR=$(find "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -n1)
-          fi
-          if [ -z "$SDKMGR" ]; then
-            echo "sdkmanager not found under ${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
-            ls "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}" || true
-            exit 1
-          fi
-          echo "Found sdkmanager: $SDKMGR"
-          echo "path=$SDKMGR" >> "$GITHUB_OUTPUT"
+      # v2rayNG 同款方案：setup-android@v4 + 指定 cmdline-tools 版本。
+      # API 37 的平台包名带 minor 后缀（platforms;android-37.0），旧版 cmdline-tools 列表里会被截断显示。
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: '14742923'
+          packages: 'platforms;android-37.0 build-tools;37.0.0 platform-tools'
+          log-accepted-android-sdk-licenses: false
 
-      - name: Install SDK Platform 37 / Build Tools / NDK r29
+      - name: Install NDK r29
         shell: bash
         run: |
-          SDKMGR="${{ steps.sdk.outputs.path }}"
-          yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
-          echo "=== Available platforms (stable channel) ==="
-          "$SDKMGR" --list 2>/dev/null | grep -oE 'platforms;android-[0-9]+' | sort -uV | tail -8
+          SDKMGR="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           NDK_VER=$("$SDKMGR" --list 2>/dev/null | grep -oE 'ndk;29\.0\.[0-9]+' | head -n1 | cut -d';' -f2)
           if [ -z "$NDK_VER" ]; then NDK_VER="29.0.14206865"; fi
-          echo "Installing NDK $NDK_VER"
-          if ! "$SDKMGR" --install "platforms;android-37" "build-tools;37.0.0" "ndk;${NDK_VER}" "platform-tools"; then
-            echo "Stable channel failed, retrying with --channel=3"
-            yes | "$SDKMGR" --channel=3 --licenses >/dev/null 2>&1 || true
-            "$SDKMGR" --channel=3 --install "platforms;android-37" "build-tools;37.0.0" "ndk;${NDK_VER}" "platform-tools"
-          fi
+          echo "Installing ndk;$NDK_VER"
+          yes | "$SDKMGR" --channel=0 --install "ndk;${NDK_VER}"
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
