@@ -1,0 +1,44 @@
+name: Build hnubl Release APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK Platform 37 / Build Tools / NDK r29
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          NDK_VER=$(sdkmanager --list 2>/dev/null | grep -oE 'ndk;29\.0\.[0-9]+' | head -n1 | cut -d';' -f2)
+          if [ -z "$NDK_VER" ]; then NDK_VER="29.0.14206855"; fi
+          echo "Installing NDK $NDK_VER"
+          sdkmanager --install "platforms;android-37" "build-tools;37.0.0" "ndk;${NDK_VER}" "platform-tools"
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Release APK
+        run: ./gradlew :app:assembleRelease --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hnubl-release-apk
+          path: app/build/outputs/apk/release/*.apk
+          retention-days: 7
