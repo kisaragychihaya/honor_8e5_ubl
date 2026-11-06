@@ -18,14 +18,31 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Locate sdkmanager
+        id: sdk
+        shell: bash
+        run: |
+          SDKMGR=$(command -v sdkmanager || true)
+          if [ -z "$SDKMGR" ]; then
+            SDKMGR=$(find "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -n1)
+          fi
+          if [ -z "$SDKMGR" ]; then
+            echo "sdkmanager not found under ${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
+            ls "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}" || true
+            exit 1
+          fi
+          echo "Found sdkmanager: $SDKMGR"
+          echo "path=$SDKMGR" >> "$GITHUB_OUTPUT"
+
       - name: Install SDK Platform 37 / Build Tools / NDK r29
         shell: bash
         run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          NDK_VER=$(sdkmanager --list 2>/dev/null | grep -oE 'ndk;29\.0\.[0-9]+' | head -n1 | cut -d';' -f2)
+          SDKMGR="${{ steps.sdk.outputs.path }}"
+          yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+          NDK_VER=$("$SDKMGR" --list 2>/dev/null | grep -oE 'ndk;29\.0\.[0-9]+' | head -n1 | cut -d';' -f2)
           if [ -z "$NDK_VER" ]; then NDK_VER="29.0.14206855"; fi
           echo "Installing NDK $NDK_VER"
-          sdkmanager --install "platforms;android-37" "build-tools;37.0.0" "ndk;${NDK_VER}" "platform-tools"
+          "$SDKMGR" --install "platforms;android-37" "build-tools;37.0.0" "ndk;${NDK_VER}" "platform-tools"
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
